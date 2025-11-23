@@ -84,6 +84,7 @@ export const STRINGS = {
   view_reports: 'التقارير',
   view_tasks: 'المهام',
   view_monitor: 'المراقبة',
+  view_users: 'الموظفين',
   priority_urgent: 'عاجل جداً',
   priority_routine: 'روتيني',
   priority_report: 'يتطلب تقرير',
@@ -105,5 +106,20 @@ export const STRINGS = {
   send_digest_btn: 'إرسال ملخص المهام (Email)',
   digest_sent_success: 'تم إرسال ملخص المهام عبر البريد الإلكتروني للموظفين',
   no_notifications: 'لا توجد إشعارات جديدة',
-  mark_all_read: 'تحديد الكل كمقروء'
+  mark_all_read: 'تحديد الكل كمقروء',
+  // User Management
+  manage_users: 'إدارة الموظفين',
+  add_user: 'إضافة موظف',
+  edit_user: 'تعديل',
+  delete_user: 'حذف',
+  full_name: 'الاسم الكامل',
+  email_label: 'البريد الإلكتروني',
+  role_label: 'الصلاحية',
+  role_admin: 'مدير',
+  role_user: 'موظف',
+  save_btn: 'حفظ',
+  delete_confirm: 'هل أنت متأكد من حذف هذا المستخدم؟',
+  email_exists: 'البريد الإلكتروني مستخدم بالفعل',
+  user_created: 'تم إنشاء المستخدم بنجاح',
+  user_updated: 'تم تحديث بيانات المستخدم'
 };

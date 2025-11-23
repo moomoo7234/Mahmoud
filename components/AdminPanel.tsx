@@ -1,16 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
-import { User, AttendanceRecord, AppSettings, Task, TaskPriority, WorkerStatus } from '../types';
+import { User, AttendanceRecord, AppSettings, Task, TaskPriority, WorkerStatus, Role } from '../types';
 import { STRINGS } from '../constants';
-import { Download, Users, CheckCircle, XCircle, MapPin, Brain, CheckSquare, BarChart2, Plus, Coffee, Activity, AlertCircle, FileText, Mail, Send } from 'lucide-react';
+import { Download, Users, CheckCircle, XCircle, MapPin, Brain, CheckSquare, BarChart2, Plus, Coffee, Activity, AlertCircle, FileText, Mail, Send, UserPlus, Trash2, Edit2, Shield, Save, X } from 'lucide-react';
 import { analyzeAttendance } from '../services/geminiService';
 
 interface Props {
   user: User;
 }
 
-type Tab = 'monitor' | 'tasks' | 'reports';
+type Tab = 'monitor' | 'tasks' | 'reports' | 'users';
 
 const AdminPanel: React.FC<Props> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<Tab>('monitor');
@@ -26,6 +26,11 @@ const AdminPanel: React.FC<Props> = ({ user }) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedUserForTask, setSelectedUserForTask] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('routine');
+
+  // User Management State
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userForm, setUserForm] = useState({ fullName: '', email: '', role: 'user' as Role });
 
   useEffect(() => {
     refreshData();
@@ -139,6 +144,58 @@ const AdminPanel: React.FC<Props> = ({ user }) => {
     alert(STRINGS.digest_sent_success);
   };
 
+  // User Management Functions
+  const openUserModal = (u?: User) => {
+    if (u) {
+      setEditingUser(u);
+      setUserForm({ fullName: u.full_name, email: u.email, role: u.role });
+    } else {
+      setEditingUser(null);
+      setUserForm({ fullName: '', email: '', role: 'user' });
+    }
+    setIsUserModalOpen(true);
+  };
+
+  const handleSaveUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+        if (editingUser) {
+            db.updateUser({
+                ...editingUser,
+                full_name: userForm.fullName,
+                email: userForm.email,
+                role: userForm.role
+            });
+            alert(STRINGS.user_updated);
+        } else {
+            const newUser: User = {
+                id: 'u' + Date.now(),
+                full_name: userForm.fullName,
+                email: userForm.email,
+                role: userForm.role,
+                photo: `https://picsum.photos/100/100?random=${Date.now()}`
+            };
+            db.createUser(newUser);
+            alert(STRINGS.user_created);
+        }
+        setIsUserModalOpen(false);
+        refreshData();
+    } catch (error: any) {
+        alert(error.message);
+    }
+  };
+
+  const handleDeleteUser = (userId: string) => {
+      if (userId === user.id) {
+          alert('لا يمكنك حذف حسابك الحالي');
+          return;
+      }
+      if (window.confirm(STRINGS.delete_confirm)) {
+          db.deleteUser(userId);
+          refreshData();
+      }
+  };
+
   const calculateUserStats = (userId: string) => {
     const userLogs = logs.filter(l => l.user_id === userId);
     // Group by date
@@ -186,24 +243,30 @@ const AdminPanel: React.FC<Props> = ({ user }) => {
   return (
     <div className="space-y-6 pb-20">
       {/* Tabs Navigation */}
-      <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+      <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
         <button 
           onClick={() => setActiveTab('monitor')}
-          className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${activeTab === 'monitor' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+          className={`flex-1 min-w-[100px] py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${activeTab === 'monitor' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
         >
           <CheckCircle size={16} /> {STRINGS.view_monitor}
         </button>
         <button 
           onClick={() => setActiveTab('tasks')}
-          className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${activeTab === 'tasks' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+          className={`flex-1 min-w-[100px] py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${activeTab === 'tasks' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
         >
           <CheckSquare size={16} /> {STRINGS.view_tasks}
         </button>
         <button 
           onClick={() => setActiveTab('reports')}
-          className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${activeTab === 'reports' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+          className={`flex-1 min-w-[100px] py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${activeTab === 'reports' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
         >
           <BarChart2 size={16} /> {STRINGS.view_reports}
+        </button>
+        <button 
+          onClick={() => setActiveTab('users')}
+          className={`flex-1 min-w-[100px] py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition ${activeTab === 'users' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+        >
+          <Users size={16} /> {STRINGS.view_users}
         </button>
       </div>
 
@@ -457,6 +520,131 @@ const AdminPanel: React.FC<Props> = ({ user }) => {
                </div>
              );
           })}
+        </div>
+      )}
+
+      {/* USERS MANAGEMENT TAB */}
+      {activeTab === 'users' && (
+        <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                    <Users size={20} className="text-primary" />
+                    {STRINGS.manage_users}
+                </h3>
+                <button 
+                  onClick={() => openUserModal()}
+                  className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-teal-700 transition"
+                >
+                    <UserPlus size={18} />
+                    {STRINGS.add_user}
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+                {users.map(u => (
+                    <div key={u.id} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <img src={u.photo} alt={u.full_name} className="w-12 h-12 rounded-full border border-gray-200" />
+                            <div>
+                                <h4 className="font-bold text-gray-900">{u.full_name}</h4>
+                                <p className="text-xs text-gray-500">{u.email}</p>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 inline-block ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                                    {u.role === 'admin' ? STRINGS.role_admin : STRINGS.role_user}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => openUserModal(u)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                title={STRINGS.edit_user}
+                            >
+                                <Edit2 size={18} />
+                            </button>
+                            <button 
+                                onClick={() => handleDeleteUser(u.id)}
+                                className={`p-2 text-red-600 hover:bg-red-50 rounded-lg transition ${u.id === user.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                title={STRINGS.delete_user}
+                                disabled={u.id === user.id}
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Add/Edit User Modal */}
+            {isUserModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-fadeIn">
+                        <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="font-bold text-gray-800">
+                                {editingUser ? STRINGS.edit_user : STRINGS.add_user}
+                            </h3>
+                            <button onClick={() => setIsUserModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveUser} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">{STRINGS.full_name}</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={userForm.fullName}
+                                    onChange={e => setUserForm({...userForm, fullName: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">{STRINGS.email_label}</label>
+                                <input 
+                                    type="email" 
+                                    required
+                                    value={userForm.email}
+                                    onChange={e => setUserForm({...userForm, email: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ltr"
+                                    placeholder="user@company.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">{STRINGS.role_label}</label>
+                                <div className="flex gap-2">
+                                    <label className={`flex-1 cursor-pointer p-2 rounded-lg border text-center text-sm font-bold transition ${userForm.role === 'user' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-200'}`}>
+                                        <input 
+                                            type="radio" 
+                                            name="role" 
+                                            value="user" 
+                                            checked={userForm.role === 'user'} 
+                                            onChange={() => setUserForm({...userForm, role: 'user'})}
+                                            className="hidden" 
+                                        />
+                                        <Users size={16} className="inline mx-1" />
+                                        {STRINGS.role_user}
+                                    </label>
+                                    <label className={`flex-1 cursor-pointer p-2 rounded-lg border text-center text-sm font-bold transition ${userForm.role === 'admin' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                                        <input 
+                                            type="radio" 
+                                            name="role" 
+                                            value="admin" 
+                                            checked={userForm.role === 'admin'} 
+                                            onChange={() => setUserForm({...userForm, role: 'admin'})}
+                                            className="hidden" 
+                                        />
+                                        <Shield size={16} className="inline mx-1" />
+                                        {STRINGS.role_admin}
+                                    </label>
+                                </div>
+                            </div>
+                            <button type="submit" className="w-full py-3 bg-primary text-white rounded-xl font-bold hover:bg-teal-700 transition flex justify-center gap-2">
+                                <Save size={18} />
+                                {STRINGS.save_btn}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
       )}
 

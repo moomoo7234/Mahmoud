@@ -93,7 +93,15 @@ const UserDashboard: React.FC<Props> = ({ user }) => {
       // Only notify if created in last 4 seconds to avoid spamming on reload
       if (now - notificationTime < 4000) {
         if (Notification.permission === 'granted') {
-          new Notification(latest.title, { body: latest.message });
+          // Add extra attention for urgent tasks
+          const options: NotificationOptions = {
+             body: latest.message,
+             icon: '/favicon.ico', // standard icon
+          };
+          if (latest.type === 'urgent') {
+             options.requireInteraction = true; // Keep notification open until user clicks
+          }
+          new Notification(latest.title, options);
         }
         // Also show in-app toast
         setFeedback({ msg: latest.title, type: 'success' });
@@ -279,7 +287,7 @@ const UserDashboard: React.FC<Props> = ({ user }) => {
                 >
                   <Bell size={20} />
                   {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                    <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                   )}
                 </button>
                 {/* Notification Dropdown */}

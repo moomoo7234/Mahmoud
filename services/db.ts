@@ -44,6 +44,29 @@ export const db = {
     return users.find(u => u.email.toLowerCase() === email.toLowerCase());
   },
 
+  createUser: (user: User) => {
+    const users = db.getUsers();
+    if (users.some(u => u.email.toLowerCase() === user.email.toLowerCase())) {
+        throw new Error('البريد الإلكتروني مسجل مسبقاً');
+    }
+    users.push(user);
+    localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+  },
+  
+  updateUser: (user: User) => {
+    const users = db.getUsers();
+    const index = users.findIndex(u => u.id === user.id);
+    if (index > -1) {
+        users[index] = user;
+        localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+    }
+  },
+
+  deleteUser: (id: string) => {
+      const users = db.getUsers().filter(u => u.id !== id);
+      localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+  },
+
   getCurrentUser: (): User | null => {
     const data = localStorage.getItem(KEYS.CURRENT_USER);
     return data ? JSON.parse(data) : null;
